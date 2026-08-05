@@ -1,3 +1,4 @@
+
 """
 EndoSim API
 ===========
@@ -16,9 +17,11 @@ Product: EndoSim LLC
 """
 
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 from typing import Optional
 import traceback
+import os
 
 from ode_model import (
     run_simulation,
@@ -80,7 +83,15 @@ class DosingRequest(BaseModel):
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
-@app.get("/")
+@app.get("/", response_class=HTMLResponse)
+def root():
+    ui_path = os.path.join(os.path.dirname(__file__), "index.html")
+    if os.path.exists(ui_path):
+        with open(ui_path, "r") as f:
+            return HTMLResponse(content=f.read())
+    return HTMLResponse(content="<h1>EndoSim API</h1><p>UI not found. Use /simulate, /baseline, /dosing</p>")
+
+@app.get("/health")
 def health():
     return {
         "service": "EndoSim",
