@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EndoSim — Neuroendocrine Dynamics</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0e1a;
+    --surface: #111827;
+    --surface2: #1a2233;
+    --border: #1e2d45;
+    --border2: #2a3f5f;
+    --text: #e8edf5;
+    --muted: #6b7fa3;
+    --accent: #00d4aa;
+    --accent2: #0099ff;
+    --warn: #ff6b35;
+    --purple: #a78bfa;
+    --pink: #f472b6;
+    --amber: #fbbf24;
+    --font: 'Inter', -apple-system, sans-serif;
+    --mono: 'JetBrains Mono', 'Fira Code', monospace;
+  }
+
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 14px;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 1.25rem 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    background: var(--bg);
+    z-index: 10;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .logo-mark {
+    width: 32px; height: 32px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; font-weight: 700; color: #000;
+  }
+
+  .logo-text { font-size: 18px; font-weight: 600; letter-spacing: -0.3px; }
+  .logo-sub { font-size: 11px; color: var(--muted); letter-spacing: 0.5px; text-transform: uppercase; }
+
+  .status-pill {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 12px; color: var(--accent);
+    background: rgba(0,212,170,0.08);
+    border: 1px solid rgba(0,212,170,0.2);
+    border-radius: 20px; padding: 4px 12px;
+  }
+
+  .status-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--accent);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  main {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 0;
+    height: calc(100vh - 65px);
+  }
+
+  .sidebar {
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .panel-header {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--border);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: var(--muted);
+    display: flex; align-items: center; gap: 6px;
+  }
+
+  .panel-body { padding: 1rem; display: flex; flex-direction: column; gap: 1rem; }
+
+  .field { display: flex; flex-direction: column; gap: 6px; }
+
+  .field-label {
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 12px; color: var(--muted);
+  }
+
+  .field-val {
+    font-size: 13px; font-weight: 500; color: var(--text);
+    font-family: var(--mono);
+  }
+
+  input[type=range] {
+    width: 100%; height: 4px;
+    -webkit-appearance: none;
+    background: var(--border2);
+    border-radius: 2px; cursor: pointer;
+  }
+
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px; height: 14px; border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+  }
+
+  input[type=number] {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 13px;
+    padding: 6px 10px;
+    outline: none;
+  }
+
+  input[type=number]:focus { border-color: var(--accent); }
+
+  select {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    color: var(--text);
+    font-size: 13px;
+    padding: 7px 10px;
+    outline: none; cursor: pointer;
+  }
+
+  .btn {
+    width: 100%; padding: 10px;
+    background: var(--accent);
+    color: #000; font-weight: 600; font-size: 13px;
+    border: none; border-radius: 8px;
+    cursor: pointer; letter-spacing: 0.2px;
+    transition: opacity 0.15s, transform 0.1s;
+  }
+
+  .btn:hover { opacity: 0.9; }
+  .btn:active { transform: scale(0.98); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  .btn-ghost {
+    background: transparent;
+    border: 1px solid var(--border2);
+    color: var(--muted);
+    font-size: 12px;
+    padding: 7px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
+    width: 100%;
+  }
+
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+
+  .content {
+    overflow-y: auto;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  .metrics-row {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 10px;
+  }
+
+  .metric-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 0.85rem;
+    display: flex; flex-direction: column; gap: 4px;
+  }
+
+  .metric-label { font-size: 10px; color: var(--muted); letter-spacing: 0.5px; text-transform: uppercase; }
+  .metric-val { font-size: 20px; font-weight: 600; font-family: var(--mono); }
+  .metric-unit { font-size: 10px; color: var(--muted); }
+  .metric-delta { font-size: 11px; font-family: var(--mono); }
+  .up { color: var(--warn); }
+  .down { color: var(--accent); }
+
+  .chart-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.25rem;
+    flex: 1;
+  }
+
+  .chart-title {
+    font-size: 12px; font-weight: 500; color: var(--muted);
+    margin-bottom: 1rem;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+
+  .chart-wrap { position: relative; height: 280px; }
+
+  .eq-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.25rem;
+  }
+
+  .eq-title {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.8px;
+    text-transform: uppercase; color: var(--muted);
+    margin-bottom: 1rem;
+  }
+
+  .eq-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+  }
+
+  .eq-block {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.75rem;
+  }
+
+  .eq-name { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+
+  .eq-formula {
+    font-family: var(--mono);
+    font-size: 12px; color: var(--accent);
+    line-height: 1.5;
+    word-break: break-all;
+  }
+
+  .loading-overlay {
+    display: none;
+    position: absolute; inset: 0;
+    background: rgba(10,14,26,0.7);
+    border-radius: 10px;
+    align-items: center; justify-content: center;
+    font-size: 13px; color: var(--muted);
+    z-index: 5;
+  }
+
+  .spinner {
+    width: 20px; height: 20px;
+    border: 2px solid var(--border2);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin-right: 10px;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .error-bar {
+    display: none;
+    background: rgba(255,107,53,0.1);
+    border: 1px solid rgba(255,107,53,0.3);
+    border-radius: 8px; padding: 10px 14px;
+    font-size: 12px; color: var(--warn);
+  }
+
+  .tag {
+    display: inline-block;
+    font-size: 10px; padding: 2px 8px;
+    border-radius: 4px;
+    background: rgba(0,212,170,0.1);
+    color: var(--accent);
+    border: 1px solid rgba(0,212,170,0.2);
+    letter-spacing: 0.3px;
+  }
+
+  .scenario-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+
+  .scenario-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--muted);
+    font-size: 11px;
+    padding: 7px 8px; text-align: left;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
+  }
+
+  .scenario-btn:hover { border-color: var(--accent2); color: var(--text); }
+
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-mark">E</div>
+    <div>
+      <div class="logo-text">EndoSim</div>
+      <div class="logo-sub">Neuroendocrine Dynamics API</div>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:12px;">
+    <span class="tag">© ai70000, Ltd. / EndoSim LLC</span>
+    <div class="status-pill">
+      <div class="status-dot"></div>
+      API live
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="sidebar">
+
+    <div class="panel">
+      <div class="panel-header">⚡ Quick scenarios</div>
+      <div class="panel-body">
+        <div class="scenario-grid">
+          <button class="scenario-btn" onclick="loadScenario('rest')">🧘 Rest</button>
+          <button class="scenario-btn" onclick="loadScenario('stress')">⚠️ Acute stress</button>
+          <button class="scenario-btn" onclick="loadScenario('social')">🤝 Social buffer</button>
+          <button class="scenario-btn" onclick="loadScenario('ssri')">💊 SSRI proxy</button>
+          <button class="scenario-btn" onclick="loadScenario('combat')">🎖️ Combat load</button>
+          <button class="scenario-btn" onclick="loadScenario('ot_therapy')">🔬 OT therapy</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">⏱ Simulation parameters</div>
+      <div class="panel-body">
+        <div class="field">
+          <div class="field-label">Duration <span class="field-val" id="dur-val">60 min</span></div>
+          <input type="range" id="duration" min="10" max="480" value="60" step="10" oninput="updateLabel('duration','dur-val',v=>v+' min')">
+        </div>
+        <div class="field">
+          <div class="field-label">Stress stimulus <span class="field-val" id="stress-val">0.0</span></div>
+          <input type="range" id="stress" min="0" max="1" value="0" step="0.05" oninput="updateLabel('stress','stress-val',v=>parseFloat(v).toFixed(2))">
+        </div>
+        <div class="field">
+          <div class="field-label">Social context <span class="field-val" id="social-val">0.0</span></div>
+          <input type="range" id="social" min="0" max="1" value="0" step="0.05" oninput="updateLabel('social','social-val',v=>parseFloat(v).toFixed(2))">
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">💊 Drug inputs</div>
+      <div class="panel-body">
+        <div class="field">
+          <div class="field-label">CRH agonist/antagonist <span class="field-val" id="dcrh-val">0.00</span></div>
+          <input type="range" id="drug_crh" min="-0.5" max="0.5" value="0" step="0.01" oninput="updateLabel('drug_crh','dcrh-val',v=>parseFloat(v).toFixed(2))">
+        </div>
+        <div class="field">
+          <div class="field-label">Dopaminergic <span class="field-val" id="dda-val">0.00</span></div>
+          <input type="range" id="drug_da" min="-0.1" max="0.1" value="0" step="0.005" oninput="updateLabel('drug_da','dda-val',v=>parseFloat(v).toFixed(3))">
+        </div>
+        <div class="field">
+          <div class="field-label">Adrenergic <span class="field-val" id="dne-val">0.00</span></div>
+          <input type="range" id="drug_ne" min="-0.2" max="0.2" value="0" step="0.01" oninput="updateLabel('drug_ne','dne-val',v=>parseFloat(v).toFixed(2))">
+        </div>
+        <div class="field">
+          <div class="field-label">Oxytocin analog <span class="field-val" id="dot-val">0.00</span></div>
+          <input type="range" id="drug_ot" min="-0.3" max="0.3" value="0" step="0.01" oninput="updateLabel('drug_ot','dot-val',v=>parseFloat(v).toFixed(2))">
+        </div>
+      </div>
+    </div>
+
+    <button class="btn" id="run-btn" onclick="runSim()">▶ Run simulation</button>
+    <button class="btn-ghost" onclick="resetAll()">Reset to baseline</button>
+
+    <div class="error-bar" id="error-bar"></div>
+
+  </div>
+
+  <div class="content">
+
+    <div class="metrics-row" id="metrics-row">
+      <div class="metric-card">
+        <div class="metric-label">CRH</div>
+        <div class="metric-val" id="m-crh" style="color:#a78bfa">—</div>
+        <div class="metric-unit">pg/mL</div>
+        <div class="metric-delta" id="d-crh"></div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">ACTH</div>
+        <div class="metric-val" id="m-acth" style="color:#60a5fa">—</div>
+        <div class="metric-unit">pg/mL</div>
+        <div class="metric-delta" id="d-acth"></div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Cortisol</div>
+        <div class="metric-val" id="m-cort" style="color:#fb923c">—</div>
+        <div class="metric-unit">µg/dL</div>
+        <div class="metric-delta" id="d-cort"></div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Dopamine</div>
+        <div class="metric-val" id="m-da" style="color:#34d399">—</div>
+        <div class="metric-unit">ng/mL</div>
+        <div class="metric-delta" id="d-da"></div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Norepineph.</div>
+        <div class="metric-val" id="m-ne" style="color:#f472b6">—</div>
+        <div class="metric-unit">ng/mL</div>
+        <div class="metric-delta" id="d-ne"></div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Oxytocin</div>
+        <div class="metric-val" id="m-ot" style="color:#fbbf24">—</div>
+        <div class="metric-unit">pg/mL</div>
+        <div class="metric-delta" id="d-ot"></div>
+      </div>
+    </div>
+
+    <div class="chart-panel" style="position:relative;">
+      <div class="chart-title">
+        <span>Hormone dynamics over time</span>
+        <span id="chart-meta" style="font-family:var(--mono);font-size:11px;"></span>
+      </div>
+      <div class="loading-overlay" id="loading">
+        <div class="spinner"></div> Running ODE solver…
+      </div>
+      <div class="chart-wrap">
+        <canvas id="chart"></canvas>
+      </div>
+    </div>
+
+    <div class="eq-panel">
+      <div class="eq-title">ODE system — bidirectional PK coupling</div>
+      <div class="eq-grid">
+        <div class="eq-block">
+          <div class="eq-name">HPA axis — CRH</div>
+          <div class="eq-formula">dCRH/dt = K_syn + stress·2 + K_NE·NE<br>− K_deg·CRH − K_fb·f(CORT)·CRH</div>
+        </div>
+        <div class="eq-block">
+          <div class="eq-name">ACTH</div>
+          <div class="eq-formula">dACTH/dt = K_syn·CRH − K_deg·ACTH</div>
+        </div>
+        <div class="eq-block">
+          <div class="eq-name">Cortisol — oxytocin buffered</div>
+          <div class="eq-formula">dCORT/dt = K_syn·ACTH<br>− (K_deg + K_OT·OT)·CORT</div>
+        </div>
+        <div class="eq-block">
+          <div class="eq-name">Dopamine — Hill suppression</div>
+          <div class="eq-formula">dDA/dt = K_syn·(1 − 0.6·CORT/(CORT+20))<br>+ K_OT·OT − K_deg·DA</div>
+        </div>
+        <div class="eq-block">
+          <div class="eq-name">Norepinephrine</div>
+          <div class="eq-formula">dNE/dt = K_syn + stress·1.5 − K_deg·NE</div>
+        </div>
+        <div class="eq-block">
+          <div class="eq-name">Oxytocin — social coupling</div>
+          <div class="eq-formula">dOT/dt = K_syn + social·0.5 + K_DA·DA<br>− (K_deg + K_CORT·CORT)·OT</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<script>
+const API = 'https://endo-sim.onrender.com';
+const BASELINE = {CRH:10.0, ACTH:25.0, CORT:15.0, DA:0.13, NE:0.30, OT:1.0};
+const COLORS = {CRH:'#a78bfa',ACTH:'#60a5fa',CORT:'#fb923c',DA:'#34d399',NE:'#f472b6',OT:'#fbbf24'};
+let chart = null;
+
+function updateLabel(id, outId, fmt) {
+  document.getElementById(outId).textContent = fmt(document.getElementById(id).value);
+}
+
+function getInputs() {
+  return {
+    duration_minutes: +document.getElementById('duration').value,
+    stress_stimulus: +document.getElementById('stress').value,
+    social_context: +document.getElementById('social').value,
+    drug_crh: +document.getElementById('drug_crh').value,
+    drug_da: +document.getElementById('drug_da').value,
+    drug_ne: +document.getElementById('drug_ne').value,
+    drug_ot: +document.getElementById('drug_ot').value,
+  };
+}
+
+function setInputs(vals) {
+  const set = (id, v, outId, fmt) => {
+    document.getElementById(id).value = v;
+    document.getElementById(outId).textContent = fmt(v);
+  };
+  set('duration', vals.duration||60, 'dur-val', v=>v+' min');
+  set('stress', vals.stress||0, 'stress-val', v=>parseFloat(v).toFixed(2));
+  set('social', vals.social||0, 'social-val', v=>parseFloat(v).toFixed(2));
+  set('drug_crh', vals.drug_crh||0, 'dcrh-val', v=>parseFloat(v).toFixed(2));
+  set('drug_da', vals.drug_da||0, 'dda-val', v=>parseFloat(v).toFixed(3));
+  set('drug_ne', vals.drug_ne||0, 'dne-val', v=>parseFloat(v).toFixed(2));
+  set('drug_ot', vals.drug_ot||0, 'dot-val', v=>parseFloat(v).toFixed(2));
+}
+
+const SCENARIOS = {
+  rest:       {duration:120, stress:0,    social:0,   drug_crh:0,    drug_da:0,     drug_ne:0,   drug_ot:0},
+  stress:     {duration:60,  stress:0.85, social:0,   drug_crh:0,    drug_da:0,     drug_ne:0,   drug_ot:0},
+  social:     {duration:90,  stress:0.5,  social:1.0, drug_crh:0,    drug_da:0,     drug_ne:0,   drug_ot:0},
+  ssri:       {duration:120, stress:0.3,  social:0,   drug_crh:0,    drug_da:0.05,  drug_ne:0,   drug_ot:0.1},
+  combat:     {duration:60,  stress:1.0,  social:0,   drug_crh:0,    drug_da:0,     drug_ne:0.15,drug_ot:0},
+  ot_therapy: {duration:120, stress:0.4,  social:0.5, drug_crh:-0.1, drug_da:0,     drug_ne:0,   drug_ot:0.25},
+};
+
+function loadScenario(name) {
+  setInputs(SCENARIOS[name]);
+  runSim();
+}
+
+function resetAll() {
+  setInputs({duration:60,stress:0,social:0,drug_crh:0,drug_da:0,drug_ne:0,drug_ot:0});
+  clearMetrics();
+  if(chart) { chart.destroy(); chart=null; }
+  document.getElementById('chart-meta').textContent='';
+}
+
+function clearMetrics() {
+  ['crh','acth','cort','da','ne','ot'].forEach(h=>{
+    document.getElementById('m-'+h).textContent='—';
+    document.getElementById('d-'+h).textContent='';
+  });
+}
+
+function showError(msg) {
+  const el = document.getElementById('error-bar');
+  el.textContent = msg; el.style.display='block';
+  setTimeout(()=>el.style.display='none', 5000);
+}
+
+async function runSim() {
+  const btn = document.getElementById('run-btn');
+  const loading = document.getElementById('loading');
+  document.getElementById('error-bar').style.display='none';
+
+  btn.disabled = true; btn.textContent='Running…';
+  loading.style.display='flex';
+
+  try {
+    const payload = getInputs();
+    const res = await fetch(API+'/simulate', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(payload)
+    });
+    if(!res.ok) throw new Error('API error '+res.status);
+    const data = await res.json();
+    renderResults(data, payload);
+  } catch(e) {
+    showError('API error: '+e.message+' — is endo-sim.onrender.com live?');
+  } finally {
+    btn.disabled=false; btn.textContent='▶ Run simulation';
+    loading.style.display='none';
+  }
+}
+
+function renderResults(data, payload) {
+  const f = data.final;
+  const keys = ['CRH','ACTH','CORT','DA','NE','OT'];
+  const ids  = ['crh','acth','cort','da','ne','ot'];
+  const prec = [2,2,2,4,4,3];
+
+  keys.forEach((k,i)=>{
+    const val = f[k];
+    const base = BASELINE[k];
+    const delta = val - base;
+    const pct = ((delta/base)*100).toFixed(1);
+    document.getElementById('m-'+ids[i]).textContent = val.toFixed(prec[i]);
+    const dEl = document.getElementById('d-'+ids[i]);
+    const sign = delta>=0?'+':'';
+    dEl.textContent = sign+pct+'% vs baseline';
+    dEl.className = 'metric-delta '+(delta>=0?'up':'down');
+  });
+
+  document.getElementById('chart-meta').textContent =
+    `${data.metadata.n_steps} steps · ${payload.duration_minutes} min · RK45`;
+
+  const t = data.t;
+  const datasets = keys.map((k,i)=>({
+    label: k,
+    data: data.states[k].map((v,j)=>({x:t[j],y:v})),
+    borderColor: Object.values(COLORS)[i],
+    backgroundColor: 'transparent',
+    borderWidth: 2,
+    pointRadius: 0,
+    tension: 0.3,
+  }));
+
+  if(chart) chart.destroy();
+  chart = new Chart(document.getElementById('chart'), {
+    type:'line',
+    data:{datasets},
+    options:{
+      responsive:true,
+      maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{
+          position:'top',
+          labels:{color:'#6b7fa3',font:{size:11},boxWidth:20,padding:16}
+        },
+        tooltip:{
+          backgroundColor:'#111827',
+          borderColor:'#1e2d45',
+          borderWidth:1,
+          titleColor:'#e8edf5',
+          bodyColor:'#6b7fa3',
+          padding:10,
+          callbacks:{
+            label: ctx=>' '+ctx.dataset.label+': '+ctx.parsed.y.toFixed(4)
+          }
+        }
+      },
+      scales:{
+        x:{
+          type:'linear',
+          title:{display:true,text:'Time (minutes)',color:'#6b7fa3',font:{size:11}},
+          ticks:{color:'#6b7fa3',font:{size:10}},
+          grid:{color:'#1e2d45'}
+        },
+        y:{
+          title:{display:true,text:'Concentration',color:'#6b7fa3',font:{size:11}},
+          ticks:{color:'#6b7fa3',font:{size:10}},
+          grid:{color:'#1e2d45'}
+        }
+      }
+    }
+  });
+}
+
+window.onload = () => runSim();
+</script>
+</body>
+</html>
