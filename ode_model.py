@@ -58,9 +58,9 @@ K_CORT_FB   = 0.05
 # DA* = (da_syn_eff + K_OT_DA*OT*) / K_DA_DEG
 # cort_frac=15/(15+20)=0.43 → da_syn_eff=0.08*(1-0.6*0.43)=0.059
 # DA* = (0.059 + 0.02*1)/0.12 = 0.66  (slightly above 0.13 baseline — acceptable proxy)
-K_DA_SYN    = 0.02    # reduced so DA stays close to 0.13
+K_DA_SYN    = 0.014269  # calibrated: DA* = 0.13 at physiological baseline
 K_DA_DEG    = 0.12
-K_DA_OT     = 0.02
+K_DA_OT     = 0.005     # reduced to allow positive K_DA_SYN at baseline CORT=15
 
 # Norepinephrine
 # NE* = K_NE_SYN/K_NE_DEG → 0.30 → K_NE_SYN = 0.30*0.15 = 0.045
@@ -157,7 +157,7 @@ def endosim_odes(t: float, y: np.ndarray, inputs: EndoSimInput) -> np.ndarray:
     # OT enhances DA release; drug input additive.
     cort_suppress_frac = CORT / (CORT + 20.0)   # Hill term: saturates at high CORT
     da_syn_effective   = K_DA_SYN * (1.0 - 0.6 * cort_suppress_frac)  # max 60% suppression
-    ot_enhance_da      = K_OT_DA * OT            # OT → DA positive coupling
+    ot_enhance_da      = K_DA_OT * OT            # OT → DA positive coupling
     dDA = (da_syn_effective + ot_enhance_da + inputs.drug_da
            - K_DA_DEG * DA)
 
